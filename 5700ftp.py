@@ -3,33 +3,36 @@
 import sys
 
 
-def parse_text(text, source):
+def parse_command(text):
     response = {'operation': 0, 'param1': 0, 'param2': 0}
+
+    if len(text) == 3:
+        response['operation'] = text[1]
+        response['param1'] = text[2]
+        return response
+    elif len(text) == 4:
+        response['operation'] = text[1]
+        response['param1'] = text[2]
+        response['param2'] = text[3]
+        return response
+    else:
+        print("Invalid number of arguments to FTP client, try again!\n")
+
+
+def parse_response(text):
     server_response = {'code': 0, 'message': 0, 'param': 0}
-    if source == 'cl':
-        if len(text) == 3:
-            response['operation'] = text[1]
-            response['param1'] = text[2]
-            return response
-        elif len(text) == 4:
-            response['operation'] = text[1]
-            response['param1'] = text[2]
-            response['param2'] = text[3]
-            return response
-        else:
-            print("Invalid number of arguments to FTP client, try again!\n")
-    if source == "sv":
-        if len(text) == 2:
-            server_response['code'] = text[0]
-            server_response['message'] = text[1]
-            return server_response
-        elif len(text) == 3:
-            server_response['code'] = text[0]
-            server_response['message'] = text[1]
-            server_response['param'] = text[2]
-            return server_response
-        else:
-            print("Could not parse server response")
+
+    if len(text) == 2:
+        server_response['code'] = text[0]
+        server_response['message'] = text[1]
+        return server_response
+    elif len(text) == 3:
+        server_response['code'] = text[0]
+        server_response['message'] = text[1]
+        server_response['param'] = text[2]
+        return server_response
+    else:
+        print("Could not parse server response")
 
 
 def send_command(command):
@@ -63,7 +66,8 @@ def send_command(command):
 
 def main():
     print(sys.argv)
-    res = parse_text(sys.argv, 'cl')
+    res = parse_command(sys.argv)
+    send_command(res['operation'])
 
 
 main()
