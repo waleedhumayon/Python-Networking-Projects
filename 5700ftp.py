@@ -5,28 +5,38 @@ import socket
 
 HOSTNAME = "ftp.5700.network"
 PORT = 21
-LOGIN_INFO = "USER saeedw \r\n"
+USERNAME = "USER saeedw\r\n"
 PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
 
 
 def connect_ftp():
-
-    print("Connecting to socket\n")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOSTNAME, PORT))
     print("Socket connected!")
-    # sock.send(LOGIN_INFO.encode())
-    # sock.send(PASSWORD.encode())
-    # sock.connect((HOSTNAME, PORT))
-    print('Returning connected socket')
     return sock
 
 
 def get_ftp_response(sock):
-    sock.sendall(LOGIN_INFO.encode())
-    sock.sendall(PASSWORD.encode())
-    response = sock.recv(5000)
-    print(response.decode())
+    response = ''
+    while "\r\n" not in response:
+        message = sock.recv(1024)
+        response += message.decode()
+
+    print(response)
+    return response
+
+
+def do_login(sock):
+    try:
+        sock.sendall(USERNAME.encode())
+        res = get_ftp_response(sock)
+        if res[0] == '3':
+            sock.sendall(PASSWORD.encode())
+            res2 = get_ftp_response(sock)
+            if res2[0] == '2':
+                return 1
+    except:
+        print("Could not login, try again!")
 
 
 def parse_command(text):
@@ -93,10 +103,11 @@ def send_command(command):
 def main():
     sock = connect_ftp()
     get_ftp_response(sock)
+    login = do_login(sock)
 
-    print(sys.argv)
-    res = parse_command(sys.argv)
-    send_command(res['operation'])
+    # print(sys.argv)
+    # res = parse_command(sys.argv)
+    # send_command(res['operation'])
 
 
 main()
