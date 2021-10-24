@@ -71,7 +71,7 @@ def parse_response(text):
         print("Could not parse server response")
 
 
-def send_command(command):
+def send_command(socket, command):
     if command == 'USER':
         pass  # TODO: This is where a function call is made to create the socket with the username
     elif command == 'PASS':
@@ -83,7 +83,10 @@ def send_command(command):
     elif command == 'STRU':
         pass  # TODO: This is where a function call is made to set connection to file oriented mode - make new socket
     elif command == 'LIST':
-        pass  # TODO: This is where a function call is made to list contents of a directory on the server
+        msg = "LIST \r\n"
+        print(msg)
+        socket.send(msg.encode())
+        return  # TODO: This is where a function call is made to list contents of a directory on the server
     elif command == 'DELE':
         pass  # TODO: This is where a function call is made to delete file on the server
     elif command == 'MKD':
@@ -97,13 +100,22 @@ def send_command(command):
     elif command == 'QUIT':
         pass  # TODO: This is where a function call is made to ask the server to close the connection
     elif command == 'PASV':
-        pass  # TODO: This is where a function call is made to ask the server to open a data channel
+        msg = "PASV\r\n"
+        socket.send(msg.encode())
+        print(msg)
+        return # TODO: This is where a function call is made to ask the server to open a data channel
 
 
 def main():
     sock = connect_ftp()
     get_ftp_response(sock)
     login = do_login(sock)
+    send_command(sock, 'PASV')
+    get_ftp_response(sock)
+    #send_command(sock, 'LIST')
+    #get_ftp_response(sock)
+
+
 
     # print(sys.argv)
     # res = parse_command(sys.argv)
