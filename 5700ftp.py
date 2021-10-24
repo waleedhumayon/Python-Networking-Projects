@@ -1,6 +1,32 @@
 #!/usr/bin/env python3
 
 import sys
+import socket
+
+HOSTNAME = "ftp.5700.network"
+PORT = 21
+LOGIN_INFO = "USER saeedw \r\n"
+PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
+
+
+def connect_ftp():
+
+    print("Connecting to socket\n")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOSTNAME, PORT))
+    print("Socket connected!")
+    # sock.send(LOGIN_INFO.encode())
+    # sock.send(PASSWORD.encode())
+    # sock.connect((HOSTNAME, PORT))
+    print('Returning connected socket')
+    return sock
+
+
+def get_ftp_response(sock):
+    sock.sendall(LOGIN_INFO.encode())
+    sock.sendall(PASSWORD.encode())
+    response = sock.recv(5000)
+    print(response.decode())
 
 
 def parse_command(text):
@@ -65,6 +91,9 @@ def send_command(command):
 
 
 def main():
+    sock = connect_ftp()
+    get_ftp_response(sock)
+
     print(sys.argv)
     res = parse_command(sys.argv)
     send_command(res['operation'])
