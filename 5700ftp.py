@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import sys
 import socket
+import sys
 
 HOSTNAME = "ftp.5700.network"
 PORT = 21
@@ -34,7 +34,7 @@ def do_login(sock):
             sock.sendall(PASSWORD.encode())
             res2 = get_ftp_response(sock)
             if res2[0] == '2':
-                return 1
+                return True
     except:
         print("Could not login, try again!")
 
@@ -56,6 +56,8 @@ def parse_command(text):
 
 
 def parse_response(text):
+    text = text.split(" ")
+    print(text)
     server_response = {'code': 0, 'message': 0, 'param': 0}
 
     if len(text) == 2:
@@ -71,55 +73,62 @@ def parse_response(text):
         print("Could not parse server response")
 
 
-def send_command(socket, command):
-    if command == 'USER':
-        pass  # TODO: This is where a function call is made to create the socket with the username
-    elif command == 'PASS':
-        pass  # TODO: This is where a function call is made to enter password for the user to the server
-    elif command == 'TYPE':
-        pass  # TODO: This is where a function call is made to set connection to 8-bit binary mode
-    elif command == 'MODE':
-        pass  # TODO: This is where a function call is made to set connection to stream mode
-    elif command == 'STRU':
-        pass  # TODO: This is where a function call is made to set connection to file oriented mode - make new socket
-    elif command == 'LIST':
-        msg = "LIST \r\n"
-        print(msg)
-        socket.send(msg.encode())
-        return  # TODO: This is where a function call is made to list contents of a directory on the server
-    elif command == 'DELE':
+def send_command(sock, parsed_input):
+    if parsed_input['operation'] == 'TYPE':
+        msg = "TYPE I\r\n"
+        sock.send(msg.encode())
+        get_ftp_response(sock)
+    elif parsed_input['operation'] == 'MODE':
+        msg = "MODE S\r\n"
+        sock.send(msg.encode())
+        get_ftp_response(sock)
+    elif parsed_input['operation'] == 'STRU':
+        msg = "STRU F\r\n"
+        sock.send(msg.encode())
+        get_ftp_response(sock)
+    elif parsed_input['operation'] == 'LIST':
+        msg = "LIST\r\n"
+        sock.send(msg.encode())
+        get_ftp_response(sock)
+        # return parse_response(get_ftp_response(sock))
+    elif parsed_input['operation'] == 'DELE':
         pass  # TODO: This is where a function call is made to delete file on the server
-    elif command == 'MKD':
+    elif parsed_input['operation'] == 'MKD':
         pass  # TODO: This is where a function call is made to make directory on the server
-    elif command == 'RMD':
+    elif parsed_input['operation'] == 'RMD':
         pass  # TODO: This is where a function call is made to delete directory on path to the server
-    elif command == 'STOR':
+    elif parsed_input['operation'] == 'STOR':
         pass  # TODO: This is where a function call is made to upload a file to the server at a directory
-    elif command == 'RETR':
+    elif parsed_input['operation'] == 'RETR':
         pass  # TODO: This is where a function call is made to download a file from the sever at the path
-    elif command == 'QUIT':
-        pass  # TODO: This is where a function call is made to ask the server to close the connection
-    elif command == 'PASV':
+    elif parsed_input['operation'] == 'QUIT':
+        msg = 'QUIT\r\n'
+        sock.send(msg.encode())
+        # return parse_response(get_ftp_response(sock))
+        get_ftp_response(sock)
+    elif parsed_input['operation'] == 'PASV':
         msg = "PASV\r\n"
-        socket.send(msg.encode())
-        print(msg)
-        return # TODO: This is where a function call is made to ask the server to open a data channel
+        sock.send(msg.encode())
+        # return parse_response(get_ftp_response(sock))
+        get_ftp_response(sock)
 
 
 def main():
     sock = connect_ftp()
     get_ftp_response(sock)
-    login = do_login(sock)
-    send_command(sock, 'PASV')
-    get_ftp_response(sock)
-    #send_command(sock, 'LIST')
-    #get_ftp_response(sock)
+    logged_in = do_login(sock)
 
+    while logged_in:
+        user_input = input().split(" ")
+        parsed_input = parse_command(user_input)
 
-
-    # print(sys.argv)
-    # res = parse_command(sys.argv)
-    # send_command(res['operation'])
+        if parsed_input:
+            if parsed_input['operation'] == 'QUIT':
+                send_command(sock, parsed_input)
+                sock.close()
+                sys.exit()
+            else:
+                send_command(sock, parsed_input)
 
 
 main()
