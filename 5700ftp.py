@@ -98,6 +98,14 @@ def send_command(control_channel, parsed_input):
     elif parsed_input['operation'] == 'RMD':
         pass  # TODO: This is where a function call is made to delete directory on path to the server
     elif parsed_input['operation'] == 'STOR':
+        path_to_file = parsed_input['param1']
+        file_name = path_to_file[-1:path_to_file.find('\\')]
+        print(file_name)
+        host_file = open(file_name, 'r')
+        msg = "STOR {}\r\n".format(path_to_file)
+        control_channel.send(msg.encode())
+        host_file.close()
+        get_ftp_response(control_channel)
         pass  # TODO: This is where a function call is made to upload a file to the server at a directory
     elif parsed_input['operation'] == 'RETR':
         path_to_file = parsed_input['param1']
