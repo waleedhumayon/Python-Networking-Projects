@@ -100,7 +100,16 @@ def send_command(control_channel, parsed_input):
     elif parsed_input['operation'] == 'STOR':
         pass  # TODO: This is where a function call is made to upload a file to the server at a directory
     elif parsed_input['operation'] == 'RETR':
-        pass  # TODO: This is where a function call is made to download a file from the sever at the path
+        path_to_file = parsed_input['param1']
+        msg = "RETR {}\r\n".format(path_to_file)
+        control_channel.send(msg.encode())
+        file_name = path_to_file[-1:path_to_file.find('\\')]
+        print(file_name)
+        response = get_ftp_response(control_channel)
+        host_file = open(file_name, 'w+')
+        host_file.write(response)
+        host_file.close()
+        '''pass'''  # TODO: This is where a function call is made to download a file from the sever at the path
     elif parsed_input['operation'] == 'QUIT':
         msg = 'QUIT\r\n'
         control_channel.send(msg.encode())
@@ -132,6 +141,7 @@ def get_data_channel(ip, port):
     data_channel.connect((ip, port))
     print("Data channel formed")
     return data_channel
+
 
 
 def main():
