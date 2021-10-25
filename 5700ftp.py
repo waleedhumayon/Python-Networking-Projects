@@ -10,29 +10,29 @@ PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
 
 
 def connect_ftp():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((HOSTNAME, PORT))
+    control_channel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    control_channel.connect((HOSTNAME, PORT))
     print("Socket connected!")
-    return sock
+    return control_channel
 
 
-def get_ftp_response(sock):
+def get_ftp_response(control_channel):
     response = ''
     while "\r\n" not in response:
-        message = sock.recv(1024)
+        message = control_channel.recv(1024)
         response += message.decode()
 
     print(response)
     return response
 
 
-def do_login(sock):
+def do_login(control_channel):
     try:
-        sock.sendall(USERNAME.encode())
-        res = get_ftp_response(sock)
+        control_channel.sendall(USERNAME.encode())
+        res = get_ftp_response(control_channel)
         if res[0] == '3':
-            sock.sendall(PASSWORD.encode())
-            res2 = get_ftp_response(sock)
+            control_channel.sendall(PASSWORD.encode())
+            res2 = get_ftp_response(control_channel)
             if res2[0] == '2':
                 return True
     except:
@@ -73,23 +73,23 @@ def parse_response(text):
         print("Could not parse server response")
 
 
-def send_command(sock, parsed_input):
+def send_command(control_channel, parsed_input):
     if parsed_input['operation'] == 'TYPE':
         msg = "TYPE I\r\n"
-        sock.send(msg.encode())
-        get_ftp_response(sock)
+        control_channel.send(msg.encode())
+        get_ftp_response(control_channel)
     elif parsed_input['operation'] == 'MODE':
         msg = "MODE S\r\n"
-        sock.send(msg.encode())
-        get_ftp_response(sock)
+        control_channel.send(msg.encode())
+        get_ftp_response(control_channel)
     elif parsed_input['operation'] == 'STRU':
         msg = "STRU F\r\n"
-        sock.send(msg.encode())
-        get_ftp_response(sock)
+        control_channel.send(msg.encode())
+        get_ftp_response(control_channel)
     elif parsed_input['operation'] == 'LIST':
         msg = "LIST\r\n"
-        sock.send(msg.encode())
-        get_ftp_response(sock)
+        control_channel.send(msg.encode())
+        get_ftp_response(control_channel)
         # return parse_response(get_ftp_response(sock))
     elif parsed_input['operation'] == 'DELE':
         pass  # TODO: This is where a function call is made to delete file on the server
@@ -103,14 +103,35 @@ def send_command(sock, parsed_input):
         pass  # TODO: This is where a function call is made to download a file from the sever at the path
     elif parsed_input['operation'] == 'QUIT':
         msg = 'QUIT\r\n'
-        sock.send(msg.encode())
+        control_channel.send(msg.encode())
         # return parse_response(get_ftp_response(sock))
-        get_ftp_response(sock)
+        get_ftp_response(control_channel)
     elif parsed_input['operation'] == 'PASV':
         msg = "PASV\r\n"
-        sock.send(msg.encode())
-        # return parse_response(get_ftp_response(sock))
-        get_ftp_response(sock)
+        control_channel.send(msg.encode())
+        response = get_ftp_response(control_channel)
+        response = response.split(" ")
+        port, ip, code = get_pasv_port_ip(response)
+        if code == "227":
+            data_channel = get_data_channel(ip, port)
+            print(data_channel.getpeername())  # Second port/data channel now open
+            data_channel.close()  # Closing as we aren't doing anything with it.
+
+
+def get_pasv_port_ip(response):
+    code = response[0]
+    path = response[4].replace('.\r\n', '').replace("(", '').replace(")", "").split(",")
+    port_string = "(" + path[4] + "<<" + "8)" + "+" + path[5]
+    port = eval(port_string)
+    ip_address = path[0] + "." + path[1] + "." + path[2] + "." + path[3]
+    return port, ip_address, code
+
+
+def get_data_channel(ip, port):
+    data_channel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    data_channel.connect((ip, port))
+    print("Data channel formed")
+    return data_channel
 
 
 def main():
