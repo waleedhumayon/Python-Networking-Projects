@@ -42,7 +42,10 @@ def do_login(control_channel):
 def parse_command(text):
     response = {'operation': 0, 'param1': 0, 'param2': 0}
 
-    if len(text) == 3:
+    if len(text) == 2:
+        response['operation'] = text[1]
+        return response
+    elif len(text) == 3:
         response['operation'] = text[1]
         response['param1'] = text[2]
         return response
@@ -94,19 +97,23 @@ def send_command(control_channel, parsed_input):
     elif parsed_input['operation'] == 'DELE':
         pass  # TODO: This is where a function call is made to delete file on the server
     elif parsed_input['operation'] == 'MKD':
-        pass  # TODO: This is where a function call is made to make directory on the server
+        msg = "MKD {}\r\n".format(parsed_input['param1'])
+        control_channel.send(msg.encode())
+        get_ftp_response(control_channel)
+        '''pass'''  # TODO: This is where a function call is made to make directory on the server
     elif parsed_input['operation'] == 'RMD':
         pass  # TODO: This is where a function call is made to delete directory on path to the server
     elif parsed_input['operation'] == 'STOR':
         path_to_file = parsed_input['param1']
-        file_name = path_to_file[-1:path_to_file.find('\\')]
+        path_level = path_to_file.split("/")
+        file_name = path_level[len(path_level)-1]
         print(file_name)
         host_file = open(file_name, 'r')
         msg = "STOR {}\r\n".format(path_to_file)
         control_channel.send(msg.encode())
         host_file.close()
         get_ftp_response(control_channel)
-        pass  # TODO: This is where a function call is made to upload a file to the server at a directory
+        '''pass'''  # TODO: This is where a function call is made to upload a file to the server at a directory
     elif parsed_input['operation'] == 'RETR':
         path_to_file = parsed_input['param1']
         msg = "RETR {}\r\n".format(path_to_file)
