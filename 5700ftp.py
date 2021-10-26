@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import re
 
 HOSTNAME = "ftp.5700.network"
 PORT = 21
@@ -36,11 +37,14 @@ def get_ftp_response(sock):
 
 
 def do_login(control_channel):
+    username, password = get_user_pass(sys.argv[2])
     try:
-        control_channel.sendall(USERNAME.encode())
+        #control_channel.sendall(USERNAME.encode())
+        control_channel.sendall(username.encode())
         res = get_ftp_response(control_channel)
         if res[0] == '3':
-            control_channel.sendall(PASSWORD.encode())
+            #control_channel.sendall(PASSWORD.encode())
+            control_channel.sendall(password.encode())
             res2 = get_ftp_response(control_channel)
             if res2[0] == '2':
                 return True
@@ -121,6 +125,24 @@ def parse_command(text):
 #     else:
 #         print("Could not parse server response")
 
+def get_path(url):
+    url_split = url.split(".network")
+    if (url_split[1].startswith(":")):
+        url_split2 = re.split(r':[0-9]+', url_split[1])
+        directory = url_split2[1]
+    else:
+        directory = url_split[1]
+    print(directory)
+    return directory
+
+def get_user_pass(url):
+    user = url[6:url.find(":", 7)]
+    passw = url[url.find(":", 5)+1:(url.find('@'))]
+    return user , passw
+
+def get_hostname(url):
+    hostn = url[url.find("@")+1:url.find("/", url.find("@"))]
+    return hostn
 
 def make_directory(control_channel, parsed_input):
     msg = "MKD {}\r\n".format(parsed_input['param1'])
@@ -239,6 +261,8 @@ def delete_command(sock, parsed_input):
 
 
 def main():
+    if (len(sys.argv) < 3):
+        print("Check usage:\n .5700ftp COMMAND <arg1> <arg2 optional>")
     sock = connect_ftp(HOSTNAME, PORT)
     get_ftp_response(sock)
     logged_in = do_login(sock)
@@ -265,6 +289,7 @@ def main():
                     make_directory(sock, parsed_input)
                 elif parsed_input['operation'] == 'rmd':
                     remove_directory(sock, parsed_input)
+
 
 
 main()
