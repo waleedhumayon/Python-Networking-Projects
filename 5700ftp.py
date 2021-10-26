@@ -8,7 +8,7 @@ HOSTNAME = "ftp.5700.network"
 PORT = 21
 USERNAME = "USER saeedw\r\n"
 PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
-PATH = 'ftp://saeedw:QbuPFIpHnwBlaZSMyY6U@ftp.5700.network:21/'
+PATH = 'ftp://saeedw:QbuPFIpHnwBlaZSMyY6U@ftp.5700.network/'
 
 
 # TODO ADD SUPPORT FOR 'anonymous' as username
@@ -261,7 +261,7 @@ def delete_command(sock, parsed_input):
 
 
 def main():
-    if (len(sys.argv) < 3):
+    if (len(sys.argv) < 2):
         print("Check usage:\n .5700ftp COMMAND <arg1> <arg2 optional>")
     sock = connect_ftp(HOSTNAME, PORT)
     get_ftp_response(sock)
