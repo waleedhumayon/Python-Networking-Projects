@@ -9,6 +9,9 @@ USERNAME = "USER saeedw\r\n"
 PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
 
 
+# TODO ADD CORRECT FUNCTION IN COMMAND LINE: EX ls, cp, mkdir etc
+# TODO ADD SUPPORT FOR 'anonymous' as username
+
 def connect_ftp(host, port):
     control_channel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     control_channel.connect((host, port))
