@@ -14,20 +14,25 @@ PATH = 'ftp://saeedw:QbuPFIpHnwBlaZSMyY6U@ftp.5700.network:21/'
 # TODO ADD SUPPORT FOR MULTIPLE FILE-PATHS IN cp and mv commands
 
 def connect_ftp(host, port):
-    control_channel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    control_channel.connect((host, port))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+    # control_channel.settimeout(10)
     print("Socket connected!")
-    return control_channel
+    return sock
 
 
-def get_ftp_response(control_channel):
-    response = ''
-    while "\r\n" not in response:
-        message = control_channel.recv(1024)
-        response += message.decode()
+def get_ftp_response(sock):
+    sock.settimeout(5)
+    try:
+        response = ''
+        while "\r\n" not in response:
+            message = sock.recv(1024)
+            response += message.decode()
 
-    print(response)
-    return response
+        print(response)
+        return response
+    except TimeoutError:
+        print("No response from server!")
 
 
 def do_login(control_channel):
@@ -138,20 +143,34 @@ def quit_command(control_channel):
 
 
 def list_command(control_channel, parsed_input):
+    if parsed_input['param1'] == 0:
+        print("Please give a URL to list the directory from. Try again\n")
+        return
+
     port, ip, code = get_passive_mode(control_channel)
     if code[0] == "2":
         set_transfer_mode(control_channel)
         data_channel = connect_ftp(ip, port)
+        data_channel.settimeout(5)
         msg = "LIST {}\r\n".format(parsed_input['param1'])
         control_channel.send(msg.encode())
+        # print("Sent LIST")
         get_ftp_response(control_channel)
+        # print(data_channel.gettimeout())
+        # print("GOT MESSAGE FROM CONTROL")
         get_ftp_response(data_channel)
+        # print("GOT MESSAGE FROM DATA")
         get_ftp_response(control_channel)
+        # print("GOT MESSAGE FROM CONTROL")
     else:
         print("Could not open data channel")
 
 
 def download_command(control_channel, parsed_input):
+    # if parsed_input['param1'] == 0 or parsed_input['param2'] == 0:
+    #     print("Please give the local and remote URL for download to work. Try again\n")
+    #     return
+
     port, ip, code = get_passive_mode(control_channel)
     if code[0] == "2":
         set_transfer_mode(control_channel)
@@ -167,11 +186,11 @@ def download_command(control_channel, parsed_input):
             try:
                 bytes_buffer = int(response[response.find("(") + 1: response.find(")")].replace(" bytes", ""))
             except:
-                print("Could not calculate total number of bytes being send")
+                print("Could not calculate total number of bytes being sent, try again")
                 return
             with open(file_name, "wb") as file:
-                while bytes_buffer != 1:
-                    response1 = data_channel.recv(8000)
+                while bytes_buffer != 0:
+                    response1 = data_channel.recv(1)
                     file.write(response1)
                     bytes_buffer -= 1
                 file.close()
@@ -180,6 +199,10 @@ def download_command(control_channel, parsed_input):
 
 
 def upload_command(control_channel, parsed_input):
+    # if parsed_input['param1'] == 0 or parsed_input['param2'] == 0:
+    #     print("Please give the remote and local URL for upload to work. Try again\n")
+    #     return
+
     port, ip, code = get_passive_mode(control_channel)
     if code[0] == "2":
         set_transfer_mode(control_channel)
@@ -201,6 +224,10 @@ def upload_command(control_channel, parsed_input):
 
 
 def delete_command(sock, parsed_input):
+    if parsed_input['param1'] == 0:
+        print("Please give a URL to delete the file from. Try again\n")
+        return
+
     port, ip, code = get_passive_mode(sock)
     if code[0] == '2':
         set_transfer_mode(sock)
