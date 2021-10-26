@@ -9,8 +9,8 @@ USERNAME = "USER saeedw\r\n"
 PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
 
 
-# TODO ADD CORRECT FUNCTION IN COMMAND LINE: EX ls, cp, mkdir etc
 # TODO ADD SUPPORT FOR 'anonymous' as username
+# TODO ADD SUPPORT FOR MULTIPLE FILE-PATHS IN cp and mv commands
 
 def connect_ftp(host, port):
     control_channel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,6 +40,33 @@ def do_login(control_channel):
                 return True
     except:
         print("Could not login, try again!")
+
+
+def set_transfer_mode(control_channel):
+    msg = "TYPE I\r\n"
+    control_channel.send(msg.encode())
+    get_ftp_response(control_channel)
+
+    msg = "MODE S\r\n"
+    control_channel.send(msg.encode())
+    get_ftp_response(control_channel)
+
+    msg = "STRU F\r\n"
+    control_channel.send(msg.encode())
+    get_ftp_response(control_channel)
+
+
+def get_passive_mode(control_channel):
+    msg = "PASV\r\n"
+    control_channel.send(msg.encode())
+    response = get_ftp_response(control_channel)
+    response = response.split(" ")
+    port, ip, code = get_pasv_port_ip(response)
+    if code == "227":
+        data_channel = connect_ftp(ip, port)
+        return data_channel
+    else:
+        print("Could not connect to data channel\n")
 
 
 def parse_command(text):
@@ -80,61 +107,41 @@ def parse_response(text):
 
 
 def send_command_control_channel(control_channel, parsed_input):
-    if parsed_input['operation'] == 'TYPE':
-        msg = "TYPE I\r\n"
-        control_channel.send(msg.encode())
-        get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'MODE':
-        msg = "MODE S\r\n"
-        control_channel.send(msg.encode())
-        get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'STRU':
-        msg = "STRU F\r\n"
-        control_channel.send(msg.encode())
-        get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'MKD':
+
+    if parsed_input['operation'] == 'mkdir':
         msg = "MKD {}\r\n".format(parsed_input['param1'])
         control_channel.send(msg.encode())
         get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'RMD':
+    elif parsed_input['operation'] == 'rmdir':
         msg = "RMD {}\r\n".format(parsed_input['param1'])
         control_channel.send(msg.encode())
         get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'QUIT':
+    elif parsed_input['operation'] == 'quit':
         msg = 'QUIT\r\n'
         control_channel.send(msg.encode())
-        # return parse_response(get_ftp_response(sock))
         get_ftp_response(control_channel)
-    elif parsed_input['operation'] == 'PASV':
-        msg = "PASV\r\n"
-        control_channel.send(msg.encode())
-        response = get_ftp_response(control_channel)
-        response = response.split(" ")
-        port, ip, code = get_pasv_port_ip(response)
-        if code == "227":
-            data_channel = connect_ftp(ip, port)
-            return data_channel
-        else:
-            print("Could not connect to data channel\n")
 
 
 def send_command_data_channel(sock, parsed_input):
-    if parsed_input['operation'] == 'LIST':
-        data_channel = send_command_control_channel(sock, {'operation': 'PASV'})
+    if parsed_input['operation'] == 'ls':
+        data_channel = get_passive_mode(sock)
+        set_transfer_mode(sock)
         msg = "LIST {}\r\n".format(parsed_input['param1'])
         sock.send(msg.encode())
         get_ftp_response(sock)
         get_ftp_response(data_channel)
         get_ftp_response(sock)
-    elif parsed_input['operation'] == 'DELE':
-        data_channel = send_command_control_channel(sock, {'operation': 'PASV'})
+    elif parsed_input['operation'] == 'rm':
+        data_channel = get_passive_mode(sock)
+        set_transfer_mode(sock)
         msg = "DELE {}\r\n".format(parsed_input['param1'])
         sock.send(msg.encode())
         get_ftp_response(sock)
         data_channel.close()
-    elif parsed_input['operation'] == 'STOR':
+    elif parsed_input['operation'] == 'mv':
         print("Trying to STOR")
-        data_channel = send_command_control_channel(sock, {'operation': 'PASV'})
+        data_channel = get_passive_mode(sock)
+        set_transfer_mode(sock)
         path_to_file = parsed_input['param1']
         path_level = path_to_file.split("/")
         file_name = path_level[len(path_level) - 1]
@@ -149,8 +156,9 @@ def send_command_data_channel(sock, parsed_input):
             data_channel.close()
             get_ftp_response(sock)
             print("File: " + file_name + " has been uploaded to the server")
-    elif parsed_input['operation'] == 'RETR':  # TODO Needs fix: Gets stuck retrieving data from the data channel!!!!
-        data_channel = send_command_control_channel(sock, {'operation': 'PASV'})
+    elif parsed_input['operation'] == 'cp':  # TODO Needs fix: Gets stuck retrieving data from the data channel!!!!
+        data_channel = get_passive_mode(sock)
+        set_transfer_mode(sock)
         path_to_file = parsed_input['param1']
         path_level = path_to_file.split("/")
         msg = "RETR {}\r\n".format(path_to_file)
@@ -159,7 +167,6 @@ def send_command_data_channel(sock, parsed_input):
         sock.send(msg.encode())
         response = get_ftp_response(sock)
         if response[0] == "1":
-            print("Getting response from data")
             response_data = get_ftp_response(data_channel)  # TODO GETS STUCK HERE!
             print('Got response from data!')
             host_file = open(file_name, 'w+')
@@ -189,20 +196,17 @@ def main():
         parsed_input = parse_command(user_input)
 
         if parsed_input:
-            if parsed_input['operation'] == 'QUIT':
+            if parsed_input['operation'] == 'quit':
                 send_command_control_channel(sock, parsed_input)
                 sock.close()
                 sys.exit()
-            elif parsed_input['operation'] == 'PASV':
-                data_channel = send_command_control_channel(sock, parsed_input)
-                print(data_channel.getpeername(), data_channel.getsockname())
-            elif parsed_input['operation'] == 'STOR':
+            elif parsed_input['operation'] == 'mv':
                 send_command_data_channel(sock, parsed_input)
-            elif parsed_input['operation'] == 'LIST':
+            elif parsed_input['operation'] == 'ls':
                 send_command_data_channel(sock, parsed_input)
-            elif parsed_input['operation'] == 'RETR':
+            elif parsed_input['operation'] == 'cp':
                 send_command_data_channel(sock, parsed_input)
-            elif parsed_input['operation'] == 'DELE':
+            elif parsed_input['operation'] == 'rm':
                 send_command_data_channel(sock, parsed_input)
             else:
                 send_command_control_channel(sock, parsed_input)
