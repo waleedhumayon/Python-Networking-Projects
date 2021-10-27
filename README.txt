@@ -21,7 +21,6 @@ mkdir: MKD
 
 rmdir: RMD
 
-quit : QUIT
 
 **
 
@@ -44,4 +43,17 @@ RETR and STOR weren't working. Then we figured out that ftp servers need 2 chann
 sending commands and one for transferring actual files and data between the remote server and localhost
 After that it was a matter of debugging file permissions, configuring paths on the localhost and
 the ftp server and actually being able to traverse directories on the server.
+
+Another key challenge was not being able to get responses via the data channel. Ultimately we resolved this
+by treating the data channel socket considerably differently than the control channel. It was only used to collect data
+regarding files and the ls command.
+
+Finally, a major challenge was understanding the requirements. Specifically, we only realized that the mv anc cp
+commands are meant to work both ways, FTP->Local and Local->FTP. Luckily, the implementation of functions such as:
+download_command and upload_command made it easy to rewire and build the logic for the two way connection. Had
+that not already been created, we would likely not be able to submit a working project.
+
+Both team members worked equally on the code and the overall project. Specific focus was:
+Waleed: Command execution, data channel creation and the final logic for mv and cp
+Tanay: Command parsing, server response parsing and user input parsing as well as Command execution.
 
