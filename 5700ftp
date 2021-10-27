@@ -12,8 +12,6 @@ PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
 PATH = 'ftp://saeedw:QbuPFIpHnwBlaZSMyY6U@ftp.5700.network/'
 
 
-# TODO ADD SUPPORT FOR MULTIPLE FILE-PATHS IN cp and mv commands
-
 def connect_ftp(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, port))
