@@ -4,11 +4,20 @@ import socket
 import sys
 import os
 
+'''
+This function connects a socket to the FTP server using the hostname and port given by the user.
+'''
+
 
 def connect_ftp(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, port))
     return sock
+
+
+"""
+This function collects and returns responses from the FTP server over the control channel
+"""
 
 
 def get_ftp_response(sock):
@@ -24,6 +33,11 @@ def get_ftp_response(sock):
         print("No response from server!")
 
 
+'''
+Does the log in using the USER and PASS commands. Uses the users input for password and username
+'''
+
+
 def do_login(control_channel, username, password):
     try:
         control_channel.sendall(("USER " + username + "\r\n").encode())
@@ -35,6 +49,11 @@ def do_login(control_channel, username, password):
                 return True
     except:
         print("Could not login, try again!")
+
+
+'''
+Sets the control channel socket to file transfer mode. Uses TYPE, MODE and STRU to communicate with the FTP server.
+'''
 
 
 def set_transfer_mode(control_channel):
@@ -51,6 +70,11 @@ def set_transfer_mode(control_channel):
     get_ftp_response(control_channel)
 
 
+'''
+Puts the control channel into passive mode, and returns information about the port and ip address
+'''
+
+
 def get_passive_mode(control_channel):
     msg = "PASV\r\n"
     control_channel.send(msg.encode())
@@ -58,6 +82,11 @@ def get_passive_mode(control_channel):
     response = response.split(" ")
     port, ip, code = get_pasv_port_ip(response)
     return port, ip, code
+
+
+'''
+Helper function, responsible for parsing the servers response to a PASV request
+'''
 
 
 def get_pasv_port_ip(response):
@@ -69,6 +98,11 @@ def get_pasv_port_ip(response):
     return port, ip_address, code
 
 
+'''
+Helper function that verifies if a command is valid. Used to clean user input
+'''
+
+
 def check_valid_operation(operation):
     check = ['ls', 'mkdir', 'rm', 'rmdir', 'cp', 'mv']
     if operation in check:
@@ -76,6 +110,12 @@ def check_valid_operation(operation):
     else:
         print("Invalid command!\n")
         return False
+
+
+'''
+This function is responsible for 
+
+'''
 
 
 def get_all_info(info):
@@ -260,8 +300,14 @@ def upload_command(control_channel, parsed_input):
             response = get_ftp_response(control_channel)
             if response[0] == "1":
                 with open(parsed_input["param2"][1], "rb") as file:
-                    while bytes1 := file.read(1):
-                        data_channel.sendall(bytes1)
+                    while True:
+                        byte1 = file.read(1)
+                        if byte1:
+                            data_channel.sendall(byte1)
+                        else:
+                            break
+                    # while bytes != file.read(1):
+                    #     data_channel.sendall(bytes1)
                 file.close()
                 data_channel.close()
                 print(get_ftp_response(control_channel))
