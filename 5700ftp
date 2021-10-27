@@ -2,32 +2,23 @@
 
 import socket
 import sys
-import re
 import os
-
-HOSTNAME = "ftp.5700.network"
-PORT = 21
-USERNAME = "USER saeedw\r\n"
-PASSWORD = 'PASS QbuPFIpHnwBlaZSMyY6U\r\n'
-PATH = 'ftp://saeedw:QbuPFIpHnwBlaZSMyY6U@ftp.5700.network/'
 
 
 def connect_ftp(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, port))
-    print("Socket connected!")
     return sock
 
 
 def get_ftp_response(sock):
-    sock.settimeout(5)
+    sock.settimeout(10)
     try:
         response = ''
         while "\r\n" not in response:
             message = sock.recv(1024)
             response += message.decode()
 
-        print(response)
         return response
     except TimeoutError:
         print("No response from server!")
@@ -35,11 +26,9 @@ def get_ftp_response(sock):
 
 def do_login(control_channel, username, password):
     try:
-        # control_channel.sendall(USERNAME.encode())
         control_channel.sendall(("USER " + username + "\r\n").encode())
         res = get_ftp_response(control_channel)
         if res[0] == '3':
-            # control_channel.sendall(PASSWORD.encode())
             control_channel.sendall(("PASS " + password + "\r\n").encode())
             res2 = get_ftp_response(control_channel)
             if res2[0] == '2':
@@ -94,13 +83,11 @@ def get_all_info(info):
 
     if check_valid_operation(info[0]):
         response['operation'] = info[0]
-        print(response['operation'])
         if len(info) == 2:
             removed_fttp = info[1].replace('ftp://', '')
 
             string_data = removed_fttp.split(":")
             response['username'] = string_data[0]
-            print(string_data)
 
             pass_and_host = string_data[1].split('@')
             response['password'] = pass_and_host[0]
@@ -176,13 +163,13 @@ def get_all_info(info):
 def make_directory(control_channel, parsed_input):
     msg = "MKD {}\r\n".format(parsed_input['param1'][1])
     control_channel.send(msg.encode())
-    get_ftp_response(control_channel)
+    print(get_ftp_response(control_channel))
 
 
 def remove_directory(control_channel, parsed_input):
     msg = "RMD {}\r\n".format(parsed_input['param1'][1])
     control_channel.send(msg.encode())
-    get_ftp_response(control_channel)
+    print(get_ftp_response(control_channel))
 
 
 def quit_command(control_channel):
@@ -208,7 +195,7 @@ def list_command(control_channel, parsed_input):
         get_ftp_response(control_channel)
         res = data_channel.recv(5000)
         print(res)
-        get_ftp_response(control_channel)
+        print(get_ftp_response(control_channel))
 
     else:
         print("Could not open data channel")
@@ -228,11 +215,9 @@ def download_command(control_channel, parsed_input):
             set_transfer_mode(control_channel)
             data_channel = connect_ftp(ip, port)
             path_to_file = parsed_input['param1'][1]
-            print("SENT PATH TO FILE")
             path_level = path_to_file.split("/")
             msg = "RETR {}\r\n".format(path_to_file)
             file_name = path_level[len(path_level) - 1]
-            print(file_name)
             control_channel.send(msg.encode())
             response = get_ftp_response(control_channel)
             if response[0] == "1":
@@ -242,14 +227,13 @@ def download_command(control_channel, parsed_input):
                     print("Could not calculate total number of bytes being sent, try again")
                     return
                 with open(parsed_input['param2'][1], "wb") as file:
-                    print("SENDING FILE NOW")
                     while bytes_buffer != 0:
                         response1 = data_channel.recv(1)
                         file.write(response1)
                         bytes_buffer -= 1
                     file.close()
                     data_channel.close()
-                    get_ftp_response(control_channel)
+                    print(get_ftp_response(control_channel))
 
 
 def upload_command(control_channel, parsed_input):
@@ -277,7 +261,7 @@ def upload_command(control_channel, parsed_input):
                         data_channel.sendall(bytes1)
                 file.close()
                 data_channel.close()
-                get_ftp_response(control_channel)
+                print(get_ftp_response(control_channel))
                 print("File: " + file_name + " has been uploaded to the server")
     else:
         print("Please make sure one file is local and one remote for the upload to happen! \n")
@@ -294,7 +278,7 @@ def delete_command(sock, parsed_input):
         data_channel = connect_ftp(ip, port)
         msg = "DELE {}\r\n".format(parsed_input['param1'][1])
         sock.send(msg.encode())
-        get_ftp_response(sock)
+        print(get_ftp_response(sock))
         data_channel.close()
 
 
@@ -312,35 +296,40 @@ def main():
         print("Check usage:\n .5700ftp COMMAND <arg1> <arg2 optional>")
     sys.argv.remove('./5700ftp')
     parsed_data = get_all_info(sys.argv)
-    print(parsed_data)
 
     sock = connect_ftp(parsed_data['host'], int(parsed_data['port']))
     get_ftp_response(sock)
     logged_in = do_login(sock, parsed_data['username'], parsed_data['password'])
 
     if parsed_data:
-        if parsed_data['operation'] == 'quit':
-            quit_command(sock)
-        elif parsed_data['operation'] == 'mv':
+        if parsed_data['operation'] == 'mv':
             if parsed_data['param1'][0] == 1:
                 download_command(sock, parsed_data)
                 delete_command(sock, parsed_data)
+                quit_command(sock)
             elif parsed_data['param1'][0] == 2:
                 upload_command(sock, parsed_data)
                 move_local_file(parsed_data)
+                quit_command(sock)
         elif parsed_data['operation'] == 'ls':
             list_command(sock, parsed_data)
+            quit_command(sock)
         elif parsed_data['operation'] == 'cp':
             if parsed_data['param1'][0] == 1:
                 download_command(sock, parsed_data)
+                quit_command(sock)
             elif parsed_data['param1'][0] == 2:
                 upload_command(sock, parsed_data)
+                quit_command(sock)
         elif parsed_data['operation'] == 'rm':
             delete_command(sock, parsed_data)
+            quit_command(sock)
         elif parsed_data['operation'] == 'mkdir':
             make_directory(sock, parsed_data)
+            quit_command(sock)
         elif parsed_data['operation'] == 'rmdir':
             remove_directory(sock, parsed_data)
+            quit_command(sock)
 
 
 main()
