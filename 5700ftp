@@ -194,8 +194,11 @@ def list_command(control_channel, parsed_input):
         control_channel.send(msg.encode())
         get_ftp_response(control_channel)
         res = data_channel.recv(5000)
-        print(res)
         print(get_ftp_response(control_channel))
+        if res == b'':
+            print("--No files in the given directory--\n")
+        else:
+            print(res)
 
     else:
         print("Could not open data channel")
